@@ -1,0 +1,16 @@
+{
+  "name": "1expressproject",
+  "version": "1.0.0",
+  "description": "very beginning Express js",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "timkor",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "express": "^4.17.1",
+    "pug": "^3.0.2"
+  }
+}
