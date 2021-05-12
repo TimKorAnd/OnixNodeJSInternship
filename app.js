@@ -90,7 +90,6 @@ function addWaterMark(filename, waterMark = 'ONIX') {
     for (const gifObject of gifObjectsArray) {
         downloadGif(gifObject);
     }
-
 })()
     .catch(console.log);
 
