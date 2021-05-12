@@ -30,42 +30,36 @@ app.listen(process.env.port || port);
 
 console.log("Running at Port 3000");
 
-
-function getGifObjects() {
-    axios.get(`https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=onix&limit=10&offset=0&lang=en`)
-        .then(res => {
-            const gifObjects = res.data.data;
-            return gifObjects;
-        })
-        .then(gifObjects => {
-            gifObjects.sort((o1, o2) => {
-                if (o1.rating > o2.rating) {
-                    return 1;
-                }
-                if (o1.rating < o2.rating) {
-                    return -1;
-                }
-                return 0;
-            });
-            return gifObjects;
-        })
-        .then(gifObjects => {
-            for (const gifObject of gifObjects) {
-                axios({
-                    url: gifObject.images.fixed_height.url,
-                    method: 'GET',
-                    responseType: 'stream'
-                }).then(response => {
-                    response.data.pipe(fs.createWriteStream(assetsPath + fileSeparator + gifObject.username + '_' + gifObject.id + '.' + gifObject.type))
-                        .on('finish', () => {console.log(gifObject.username + '_' + gifObject.id + '.' + gifObject.type +' has downloaded.')})
-                        .on('error', () => {console.log(gifObject.id + '.' + gifObject.type +' error while downloaded.')});
-                });
-            }
-
-        })
-        .catch(error => {
-            console.log(error)
-        })
+async function getGifObjectsArray(queriSring) {
+    queriSring = queriSring || `https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=onix&limit=10&offset=0&lang=en;`
+    const response = await  axios.get(queriSring);
+    return response.data.data;
 }
 
-getGifObjects();
+function sortByRating(gifObjectsArray, sortField = 'rating') {
+    return gifObjectsArray.sort((gifObject1, gifObject2) => gifObject1[sortField].localeCompare(gifObject2[sortField]));
+}
+
+async function downloadGif(gifObject) {
+    const resStream = await axios({
+        url: gifObject.images.fixed_height.url,
+        method: 'GET',
+        responseType: 'stream'
+    });
+    const fileName = gifObject.username + '_' + gifObject.id + '.' + gifObject.type;
+    const writer = fs.createWriteStream(assetsPath + fileSeparator + fileName);
+
+    resStream.data.pipe(writer)
+        .on('finish', () => {console.log(gifObject.username + '_' + gifObject.id + '.' + gifObject.type +' has downloaded.')})
+        .on('error', () => {console.log(gifObject.id + '.' + gifObject.type +' error while downloaded.')});
+}
+
+(async() => {
+    const data = await getGifObjectsArray();
+    sortByRating(data);
+    for(const item of data) {
+        await downloadGif(item);
+    }
+})();
+
+
