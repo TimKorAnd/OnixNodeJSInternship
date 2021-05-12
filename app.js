@@ -4,6 +4,8 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const router = express.Router();
+const Jimp = require('jimp');
+const { GifUtil,GifFrame,BitmapImage } = require('gifwrap');
 
 
 const apiKey = 'j4CoPU1TdrRYuzG8H2WxvIp8DEkcuh4v'; // APP: exVB TODO move to config?
@@ -49,17 +51,62 @@ async function downloadGif(gifObject) {
     const fileName = gifObject.username + '_' + gifObject.id + '.' + gifObject.type;
     const writer = fs.createWriteStream(assetsPath + fileSeparator + fileName);
 
-    resStream.data.pipe(writer)
-        .on('finish', () => {console.log(gifObject.username + '_' + gifObject.id + '.' + gifObject.type +' has downloaded.')})
+    await resStream.data.pipe(writer)
+        .on('finish', () => {
+            console.log(gifObject.username + '_' + gifObject.id + '.' + gifObject.type +' has downloaded.');
+
+        })
         .on('error', () => {console.log(gifObject.id + '.' + gifObject.type +' error while downloaded.')});
+
 }
+/* Add watermark to all gifs frames
+copied from stackoverflow
+* */
+function addWaterMark(filename, waterMark = 'ONIX') {
+    var frames = [];
+
+    Jimp.loadFont(Jimp.FONT_SANS_32_WHITE).then(async function(font){
+        await GifUtil.read(filename).then(inputGif => {
+            inputGif.frames.forEach(function(frame){
+                const jimpCopied = GifUtil.copyAsJimp(Jimp, frame);
+                jimpCopied.print(font,0,0,waterMark);
+                const GifCopied = new GifFrame(new BitmapImage(jimpCopied.bitmap,{
+                    disposalMethod: frame.disposalMethod,
+                    delayCentisecs: frame.delayCentisecs,
+                }));
+                frames.push(GifCopied);
+            });
+        });
+        GifUtil.quantizeDekker(frames);
+        GifUtil.write(filename,frames);
+    });
+}
+
+async function watermarkGifFilesInFolder(folder = assetsPath) {
+     fs.readdirSync(folder + fileSeparator).forEach(file => {
+            if (file.endsWith('.gif')) {
+                addWaterMark(folder + fileSeparator + file, 'ONIX');
+            }
+            console.log(file);
+
+    });
+}
+
 
 (async() => {
     const data = await getGifObjectsArray();
     sortByRating(data);
-    for(const item of data) {
+    for (const item of data) {
         await downloadGif(item);
     }
-})();
+    return 'done';
+})().then(async(value) => {
+        console.log(value);
+        await watermarkGifFilesInFolder();
+    }
+)
+    .catch(console.log);
+
+
 
 
